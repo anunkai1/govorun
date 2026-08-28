@@ -103,9 +103,13 @@ async function replyWithResult(groupId, original, result, voice) {
 async function handleMessage(raw) {
   const groupId = raw.key?.remoteJid;
   if (!groupId || raw.key?.fromMe || !remember(raw.key?.id)) return;
-  const direct = config.directChats.get(jidNormalizedUser(groupId));
+  const directId = jidNormalizedUser(groupId);
+  const direct = config.directChats.get(directId);
   const group = config.groups.get(groupId) || direct;
-  if (!group) return;
+  if (!group) {
+    if (groupId.endsWith("@s.whatsapp.net") || groupId.endsWith("@lid")) log(`ignored unconfigured direct chat ${directId}`);
+    return;
+  }
   const isDirect = Boolean(direct);
   const sender = raw.key.participant || raw.key.remoteJid;
   const { type, text, mentions } = messageParts(raw);
@@ -222,5 +226,5 @@ process.on("SIGHUP", async () => {
   catch (error) { log(`configuration reload failed: ${shortError(error)}`); }
 });
 
-log(`starting; configured groups=${config.groups.size}; instance=${randomUUID().slice(0, 8)}`);
+log(`starting; configured groups=${config.groups.size}; direct chats=${config.directChats.size}; instance=${randomUUID().slice(0, 8)}`);
 connect().catch((error) => { console.error(`[govorun] startup failed: ${shortError(error)}`); process.exitCode = 1; });
