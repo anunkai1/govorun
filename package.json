@@ -1,0 +1,16 @@
+{
+  "name": "govorun",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Isolated WhatsApp group transport for the Govorun pi agent",
+  "type": "module",
+  "scripts": {
+    "check": "node --check index.js && node --check lib/*.js",
+    "test": "node --test tests/*.test.js",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "qrcode": "1.5.4"
+  }
+}
