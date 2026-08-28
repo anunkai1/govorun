@@ -10,6 +10,7 @@ import { randomUUID } from "node:crypto";
 import { chmod, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import QRCode from "qrcode";
+import pino from "pino";
 import { loadConfig } from "./lib/config.js";
 import { GroupAgent } from "./lib/pi.js";
 import { speakAsWhatsappVoice, transcribeVoice } from "./lib/voice.js";
@@ -28,7 +29,7 @@ const recentMessages = new Set();
 const recentOrder = [];
 const pendingVoice = new Map();
 let socket;
-let botJid;
+let botJids = new Set();
 let reconnectTimer;
 let stopping = false;
 
@@ -72,7 +73,7 @@ function messageParts(raw) {
 }
 
 function isMentioned(mentions) {
-  return Boolean(botJid && mentions.some((value) => jidNormalizedUser(value) === botJid));
+  return mentions.some((value) => botJids.has(jidNormalizedUser(value)));
 }
 
 function isNewCommand(text) { return /(^|\s)\/new(?:\s|$)/i.test(text); }
@@ -155,7 +156,13 @@ async function connect() {
   await mkdir(AUTH_DIR, { recursive: true, mode: 0o700 });
   await mkdir(STATE_DIR, { recursive: true, mode: 0o700 });
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
-  socket = makeWASocket({ auth: state, markOnlineOnConnect: false, syncFullHistory: false, generateHighQualityLinkPreview: false });
+  socket = makeWASocket({
+    auth: state,
+    logger: pino({ level: "warn" }),
+    markOnlineOnConnect: false,
+    syncFullHistory: false,
+    generateHighQualityLinkPreview: false,
+  });
   socket.ev.on("creds.update", saveCreds);
   socket.ev.on("connection.update", async (update) => {
     if (update.qr) {
@@ -166,8 +173,8 @@ async function connect() {
       log(`WhatsApp link QR is ready at ${QR_PATH}; scan it from the dedicated Govorun phone.`);
     }
     if (update.connection === "open") {
-      botJid = jidNormalizedUser(socket.user?.id || "");
-      log(`WhatsApp connected as ${botJid}; configured groups=${config.groups.size}`);
+      botJids = new Set([socket.user?.id, socket.user?.lid].filter(Boolean).map(jidNormalizedUser));
+      log(`WhatsApp connected; configured groups=${config.groups.size}`);
     }
     if (update.connection === "close" && !stopping) {
       const status = update.lastDisconnect?.error?.output?.statusCode;
