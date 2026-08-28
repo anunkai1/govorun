@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root=${GOVORUN_SELF_ROOT:-/home/govorun/self/current}
+state=/home/govorun/self
+cd -- "$root"
+[[ -f package.json && -d .git ]] || { echo "Govorun self project is not initialised" >&2; exit 1; }
+
+npm run check
+npm test
+npm audit --omit=dev --audit-level=moderate
+
+old=$(cat "$state/last-good" 2>/dev/null || true)
+[[ "$old" =~ ^[0-9a-f]{7,64}$ ]] || old=$(git rev-parse HEAD)
+git add -A
+if git diff --cached --quiet; then
+  echo "No self changes to deploy."
+  exit 0
+fi
+git -c user.name='Govorun self-deploy' -c user.email='govorun@localhost' commit -m "Govorun self-update"
+new=$(git rev-parse HEAD)
+printf '%s\n' "$old" > "$state/previous-good"
+printf '%s\n' "$new" > "$state/pending-good"
+chmod 0600 "$state/previous-good" "$state/pending-good"
+if [[ ! "${GOVORUN_RELOAD_PID:-}" =~ ^[0-9]+$ ]]; then
+  echo "Govorun reload process is unavailable; change committed but not activated" >&2
+  exit 1
+fi
+kill -USR2 "$GOVORUN_RELOAD_PID"
+printf 'Self-update %s passed checks and is restarting Govorun.\n' "$new"

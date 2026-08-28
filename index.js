@@ -14,6 +14,7 @@ import pino from "pino";
 import { loadConfig } from "./lib/config.js";
 import { GroupAgent } from "./lib/pi.js";
 import { drainOutgoingFiles } from "./lib/outbox.js";
+import { saveIncomingAttachment } from "./lib/inbox.js";
 import { speakAsWhatsappVoice, transcribeVoice } from "./lib/voice.js";
 
 const AUTH_DIR = "/home/govorun/.local/state/govorun/whatsapp-auth";
@@ -126,7 +127,7 @@ async function handleMessage(raw) {
   }
   const isDirect = Boolean(direct);
   const sender = raw.key.participant || raw.key.remoteJid;
-  const { type, text, mentions } = messageParts(raw);
+  const { type, content, text, mentions } = messageParts(raw);
   const mentioned = isMentioned(mentions);
   const youtube = YOUTUBE.test(text);
   const pendingKey = voiceKey(groupId, sender);
@@ -150,13 +151,25 @@ async function handleMessage(raw) {
         return;
       }
 
+      let attachment;
+      try {
+        attachment = await saveIncomingAttachment(raw, group, type, content, () =>
+          downloadMediaMessage(raw, "buffer", {}, { reuploadRequest: socket.updateMediaMessage }));
+      } catch (error) {
+        await sendText(groupId, `Не удалось получить вложение: ${shortError(error)}`, raw);
+        return;
+      }
       let request = text.trim();
       let shouldVoiceReply = false;
+      if (attachment) {
+        request = [request, `A WhatsApp attachment was received. Inspect this file and use it to fulfil the request: ${attachment.path}`]
+          .filter(Boolean).join("\n\n");
+      }
       if (voice) {
         pendingVoice.delete(pendingKey);
         try {
-          const audio = await downloadMediaMessage(raw, "buffer", {}, { reuploadRequest: socket.updateMediaMessage });
-          request = await transcribeVoice(audio);
+          request = [await transcribeVoice(attachment?.buffer || await downloadMediaMessage(raw, "buffer", {}, { reuploadRequest: socket.updateMediaMessage })), request]
+            .filter(Boolean).join("\n\n");
           shouldVoiceReply = true;
         } catch (error) {
           await sendText(groupId, `Не удалось расшифровать голосовое сообщение: ${shortError(error)}`, raw);

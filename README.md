@@ -18,7 +18,10 @@ when a YouTube URL is posted; allowlisted 1:1 messages do not need a mention.
 Group-specific `AGENTS.md` files are root-owned and read-only to the agent. The
 current family chat and the owner 1:1 chat are configured for Russian responses.
 The agent can install extra tools inside each chat workspace without `sudo`;
-workspace `bin/` and `.tools/venv/bin/` are on its `PATH`. Voice notes use local
+workspace `bin/` and `.tools/venv/bin/` are on its `PATH`. Incoming WhatsApp
+attachments are saved in that chat's `inbox/` and supplied to Pi as file paths.
+The self-project can be tested and activated with `govorun-self-deploy`, which
+reloads the service and rolls back startup failures. Voice notes use local
 faster-whisper for input and a local Russian Piper voice (`ru_RU-dmitri-medium`)
 for replies.
 
