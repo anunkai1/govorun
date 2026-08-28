@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+path=${1:-}
+caption=${2:-}
+outbox=${GOVORUN_OUTBOX:-}
+workspace=${GOVORUN_WORKSPACE:-}
+if [[ -z "$path" || -z "$outbox" || -z "$workspace" ]]; then
+  echo "usage: govorun-send-file PATH [CAPTION]" >&2
+  exit 2
+fi
+[[ -f "$path" ]] || { echo "file not found: $path" >&2; exit 1; }
+mkdir -p -- "$outbox"
+canonical=$(realpath -- "$path")
+workspace=$(realpath -- "$workspace")
+publish=/var/www/mavali.top/projects/govorun
+case "$canonical" in
+  "$workspace"/*|"$publish"/*) ;;
+  *) echo "file must be in the current group workspace or Govorun publish directory" >&2; exit 1 ;;
+esac
+size=$(stat -c '%s' -- "$canonical")
+if (( size > 200 * 1024 * 1024 )); then
+  echo "file is larger than 200 MiB" >&2
+  exit 1
+fi
+umask 077
+tmp=$(mktemp "$outbox/.pending.XXXXXX")
+trap 'rm -f -- "$tmp"' EXIT
+python3 - "$tmp" "$canonical" "$caption" "$size" <<'PY'
+import json
+import os
+import sys
+
+path, canonical, caption, size = sys.argv[1:]
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump({"path": canonical, "caption": caption[:1024], "size": int(size)}, handle, ensure_ascii=False)
+    handle.write("\n")
+os.chmod(path, 0o600)
+PY
+final="$outbox/send-file-$(date +%s%N).json"
+mv -- "$tmp" "$final"
+trap - EXIT
+printf 'Queued %s for WhatsApp delivery.\n' "$(basename -- "$canonical")"

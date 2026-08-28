@@ -13,6 +13,7 @@ import QRCode from "qrcode";
 import pino from "pino";
 import { loadConfig } from "./lib/config.js";
 import { GroupAgent } from "./lib/pi.js";
+import { drainOutgoingFiles } from "./lib/outbox.js";
 import { speakAsWhatsappVoice, transcribeVoice } from "./lib/voice.js";
 
 const AUTH_DIR = "/home/govorun/.local/state/govorun/whatsapp-auth";
@@ -145,6 +146,10 @@ async function handleMessage(raw) {
     try {
       const result = await agent.prompt(`${prefix}${request}`);
       await replyWithResult(groupId, raw, result, shouldVoiceReply || /reply\s+(?:in\s+)?voice/i.test(request));
+      const files = await drainOutgoingFiles(group, socket, groupId, raw);
+      if (files.errors.length) {
+        await sendText(groupId, `Не удалось отправить файл: ${files.errors.join("; ")}`, raw);
+      }
     } catch (error) {
       await sendText(groupId, `Говорун не смог выполнить запрос: ${shortError(error)}`, raw);
     }
