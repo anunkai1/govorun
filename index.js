@@ -182,6 +182,11 @@ async function connect() {
   socket.ev.on("messages.upsert", ({ messages }) => {
     for (const message of messages) handleMessage(message).catch((error) => log(`message failed: ${shortError(error)}`));
   });
+  // New groups are only reported for operator review. They remain inert until
+  // their immutable id is entered into the root-owned group configuration.
+  socket.ev.on("groups.upsert", (groups) => {
+    for (const group of groups || []) log(`observed unconfigured group id=${group.id} subject=${String(group.subject || "").slice(0, 120)}`);
+  });
 }
 
 async function shutdown() {
