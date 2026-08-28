@@ -85,6 +85,20 @@ async function sendText(groupId, text, quoted) {
   return socket.sendMessage(groupId, { text: text.slice(0, 60_000) }, quoted ? { quoted } : undefined);
 }
 
+function startPresence(groupId, kind) {
+  let stopped = false;
+  const pulse = () => { if (!stopped) socket.sendPresenceUpdate(kind, groupId).catch(() => {}); };
+  pulse();
+  const timer = setInterval(pulse, 12_000);
+  timer.unref?.();
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    clearInterval(timer);
+    socket.sendPresenceUpdate("paused", groupId).catch(() => {});
+  };
+}
+
 async function replyWithResult(groupId, original, result, voice) {
   await sendText(groupId, result, original);
   if (!voice) return;
@@ -119,46 +133,52 @@ async function handleMessage(raw) {
   const pendingUntil = pendingVoice.get(pendingKey) || 0;
   const voice = type === "audioMessage" && raw.message && pendingUntil > Date.now();
   if (!isDirect && !mentioned && !youtube && !voice) return;
+  try { await socket.readMessages([raw.key]); } catch {}
 
   await serialise(groupId, async () => {
-    const agent = await agentFor(group);
-    if ((mentioned || isDirect) && isListenCommand(text)) {
-      pendingVoice.set(pendingKey, Date.now() + config.voiceWindowMs);
-      await sendText(groupId, "Теперь отправьте голосовое сообщение.", raw);
-      return;
-    }
-    if ((mentioned || isDirect) && isNewCommand(text)) {
-      await agent.reset();
-      await sendText(groupId, "Новая сессия Говоруна начата.", raw);
-      return;
-    }
-
-    let request = text.trim();
-    let shouldVoiceReply = false;
-    if (voice) {
-      pendingVoice.delete(pendingKey);
-      try {
-        const audio = await downloadMediaMessage(raw, "buffer", {}, { reuploadRequest: socket.updateMediaMessage });
-        request = await transcribeVoice(audio);
-        shouldVoiceReply = true;
-      } catch (error) {
-        await sendText(groupId, `Не удалось расшифровать голосовое сообщение: ${shortError(error)}`, raw);
+    const stopPresence = startPresence(groupId, type === "audioMessage" ? "recording" : "composing");
+    try {
+      const agent = await agentFor(group);
+      if ((mentioned || isDirect) && isListenCommand(text)) {
+        pendingVoice.set(pendingKey, Date.now() + config.voiceWindowMs);
+        await sendText(groupId, "Теперь отправьте голосовое сообщение.", raw);
         return;
       }
-    }
-    if (!request && !youtube) return;
-    const prefix = youtube && !mentioned
-      ? "A YouTube link was posted in this approved Govorun group. Analyse its transcript accurately and summarise only transcript-supported information. If no transcript is available, say so plainly.\n\n"
-      : "";
-    try {
-      const result = await agent.prompt(`${prefix}${request}`);
-      await replyWithResult(groupId, raw, result, shouldVoiceReply || /reply\s+(?:in\s+)?voice/i.test(request));
-      const files = await drainOutgoingFiles(group, socket, groupId, raw);
-      if (files.errors.length) {
-        await sendText(groupId, `Не удалось отправить файл: ${files.errors.join("; ")}`, raw);
+      if ((mentioned || isDirect) && isNewCommand(text)) {
+        await agent.reset();
+        await sendText(groupId, "Новая сессия Говоруна начата.", raw);
+        return;
       }
-    } catch (error) {
-      await sendText(groupId, `Говорун не смог выполнить запрос: ${shortError(error)}`, raw);
+
+      let request = text.trim();
+      let shouldVoiceReply = false;
+      if (voice) {
+        pendingVoice.delete(pendingKey);
+        try {
+          const audio = await downloadMediaMessage(raw, "buffer", {}, { reuploadRequest: socket.updateMediaMessage });
+          request = await transcribeVoice(audio);
+          shouldVoiceReply = true;
+        } catch (error) {
+          await sendText(groupId, `Не удалось расшифровать голосовое сообщение: ${shortError(error)}`, raw);
+          return;
+        }
+      }
+      if (!request && !youtube) return;
+      const prefix = youtube && !mentioned
+        ? "A YouTube link was posted in this approved Govorun group. Analyse its transcript accurately and summarise only transcript-supported information. If no transcript is available, say so plainly.\n\n"
+        : "";
+      try {
+        const result = await agent.prompt(`${prefix}${request}`);
+        await replyWithResult(groupId, raw, result, shouldVoiceReply || /reply\s+(?:in\s+)?voice/i.test(request));
+        const files = await drainOutgoingFiles(group, socket, groupId, raw);
+        if (files.errors.length) {
+          await sendText(groupId, `Не удалось отправить файл: ${files.errors.join("; ")}`, raw);
+        }
+      } catch (error) {
+        await sendText(groupId, `Говорун не смог выполнить запрос: ${shortError(error)}`, raw);
+      }
+    } finally {
+      stopPresence();
     }
   });
 }
