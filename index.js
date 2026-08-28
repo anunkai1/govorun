@@ -102,8 +102,11 @@ async function replyWithResult(groupId, original, result, voice) {
 
 async function handleMessage(raw) {
   const groupId = raw.key?.remoteJid;
-  if (!groupId || raw.key?.fromMe || !config.groups.has(groupId) || !remember(raw.key?.id)) return;
-  const group = config.groups.get(groupId);
+  if (!groupId || raw.key?.fromMe || !remember(raw.key?.id)) return;
+  const direct = config.directChats.get(jidNormalizedUser(groupId));
+  const group = config.groups.get(groupId) || direct;
+  if (!group) return;
+  const isDirect = Boolean(direct);
   const sender = raw.key.participant || raw.key.remoteJid;
   const { type, text, mentions } = messageParts(raw);
   const mentioned = isMentioned(mentions);
@@ -111,16 +114,16 @@ async function handleMessage(raw) {
   const pendingKey = voiceKey(groupId, sender);
   const pendingUntil = pendingVoice.get(pendingKey) || 0;
   const voice = type === "audioMessage" && raw.message && pendingUntil > Date.now();
-  if (!mentioned && !youtube && !voice) return;
+  if (!isDirect && !mentioned && !youtube && !voice) return;
 
   await serialise(groupId, async () => {
     const agent = await agentFor(group);
-    if (mentioned && isListenCommand(text)) {
+    if ((mentioned || isDirect) && isListenCommand(text)) {
       pendingVoice.set(pendingKey, Date.now() + config.voiceWindowMs);
       await sendText(groupId, "Теперь отправьте голосовое сообщение.", raw);
       return;
     }
-    if (mentioned && isNewCommand(text)) {
+    if ((mentioned || isDirect) && isNewCommand(text)) {
       await agent.reset();
       await sendText(groupId, "Новая сессия Говоруна начата.", raw);
       return;

@@ -23,6 +23,12 @@ test("accepts fixed group IDs and confines workspace slugs", async () => {
   assert.equal(value.groups.get("120363000000000000-123456789@g.us").workspace, "/home/govorun/groups/family");
 });
 
-test("rejects paths and malformed group IDs", async () => {
+test("accepts an explicitly allowlisted direct chat", async () => {
+  const value = await config({ groups: [], direct: [{ id: "61488817223@s.whatsapp.net", slug: "owner" }] });
+  assert.equal(value.directChats.get("61488817223@s.whatsapp.net").workspace, "/home/govorun/direct/owner");
+});
+
+test("rejects paths and malformed IDs", async () => {
   await assert.rejects(config({ groups: [{ id: "not-a-group", slug: "../lepton" }] }));
+  await assert.rejects(config({ groups: [], direct: [{ id: "61488817223@g.us", slug: "owner" }] }));
 });
