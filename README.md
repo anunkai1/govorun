@@ -16,7 +16,9 @@ The bridge only accepts configured WhatsApp group IDs and explicitly allowlisted
 1:1 WhatsApp IDs. Group messages are processed when Govorun is mentioned, or
 when a YouTube URL is posted; allowlisted 1:1 messages do not need a mention.
 Group-specific `AGENTS.md` files are root-owned and read-only to the agent. The
-current family chat is configured for Russian responses. Voice notes use local
+current family chat and the owner 1:1 chat are configured for Russian responses.
+The agent can install extra tools inside each chat workspace without `sudo`;
+workspace `bin/` and `.tools/venv/bin/` are on its `PATH`. Voice notes use local
 faster-whisper for input and a local Russian Piper voice (`ru_RU-dmitri-medium`)
 for replies.
 
