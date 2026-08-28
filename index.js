@@ -7,7 +7,7 @@ import makeWASocket, {
   useMultiFileAuthState,
 } from "@whiskeysockets/baileys";
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { chmod, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import QRCode from "qrcode";
 import { loadConfig } from "./lib/config.js";
@@ -17,6 +17,7 @@ import { speakAsWhatsappVoice, transcribeVoice } from "./lib/voice.js";
 const AUTH_DIR = "/home/govorun/.local/state/govorun/whatsapp-auth";
 const STATE_DIR = "/home/govorun/.local/state/govorun";
 const QR_PATH = join(STATE_DIR, "whatsapp-link.txt");
+const QR_PNG_PATH = join(STATE_DIR, "whatsapp-link.png");
 const RECENT_LIMIT = 4096;
 const YOUTUBE = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?[^\s]*\bv=|shorts\/|live\/)|youtu\.be\/)[^\s<>()]+/i;
 
@@ -160,6 +161,8 @@ async function connect() {
     if (update.qr) {
       const terminal = await QRCode.toString(update.qr, { type: "terminal", small: true });
       await writeFile(QR_PATH, terminal, { mode: 0o600 });
+      await QRCode.toFile(QR_PNG_PATH, update.qr, { width: 900, margin: 2 });
+      await chmod(QR_PNG_PATH, 0o600);
       log(`WhatsApp link QR is ready at ${QR_PATH}; scan it from the dedicated Govorun phone.`);
     }
     if (update.connection === "open") {
