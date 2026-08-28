@@ -186,7 +186,10 @@ async function connect() {
       reconnectTimer = setTimeout(() => connect().catch((error) => log(`reconnect failed: ${shortError(error)}`)), 3_000);
     }
   });
-  socket.ev.on("messages.upsert", ({ messages }) => {
+  socket.ev.on("messages.upsert", ({ messages, type }) => {
+    // Never replay historical/sync messages into the agent. Only live notify
+    // events are allowed to trigger work or YouTube analysis.
+    if (type !== "notify") return;
     for (const message of messages) handleMessage(message).catch((error) => log(`message failed: ${shortError(error)}`));
   });
   // New groups are only reported for operator review. They remain inert until
