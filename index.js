@@ -34,6 +34,8 @@ let socket;
 let botJids = new Set();
 let reconnectTimer;
 let stopping = false;
+let reloadRequested = false;
+let restarting = false;
 
 function log(message) { console.log(`[govorun] ${message}`); }
 function shortError(error) { return String(error?.message || error).replace(/[\r\n]+/g, " ").slice(0, 500); }
@@ -194,6 +196,11 @@ async function handleMessage(raw) {
       stopPresence();
     }
   });
+  if (reloadRequested && !restarting) {
+    restarting = true;
+    await shutdown();
+    setTimeout(() => process.exit(75), 500).unref?.();
+  }
 }
 
 async function connect() {
@@ -254,6 +261,10 @@ async function shutdown() {
 
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
+process.on("SIGUSR2", () => {
+  reloadRequested = true;
+  log("self-update requested; will reload after the current message");
+});
 process.on("SIGHUP", async () => {
   try { config = await loadConfig(); log(`configuration reloaded; configured groups=${config.groups.size}`); }
   catch (error) { log(`configuration reload failed: ${shortError(error)}`); }
