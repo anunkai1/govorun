@@ -15,7 +15,8 @@ Govorun is the isolated WhatsApp group transport for a pi coding agent.
 The bridge only accepts configured WhatsApp group IDs. Messages are processed when
 Govorun is mentioned, or when a YouTube URL is posted. Group-specific `AGENTS.md`
 files are root-owned and read-only to the agent. The current family group is
-configured for Russian responses.
+configured for Russian responses. Voice notes use local faster-whisper for input
+and a local Russian Piper voice (`ru_RU-dmitri-medium`) for replies.
 
 ## Deployment
 
