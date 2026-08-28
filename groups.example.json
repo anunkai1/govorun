@@ -1,0 +1,7 @@
+{
+  "groups": [],
+  "models": {
+    "primary": "openai-codex/gpt-5.6-luna",
+    "fallback": "venice/z-ai-glm-5-3-flash"
+  }
+}
