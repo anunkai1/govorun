@@ -116,12 +116,12 @@ async function handleMessage(raw) {
     const agent = await agentFor(group);
     if (mentioned && isListenCommand(text)) {
       pendingVoice.set(pendingKey, Date.now() + config.voiceWindowMs);
-      await sendText(groupId, "Send your voice note now.", raw);
+      await sendText(groupId, "Теперь отправьте голосовое сообщение.", raw);
       return;
     }
     if (mentioned && isNewCommand(text)) {
       await agent.reset();
-      await sendText(groupId, "New Govorun session started.", raw);
+      await sendText(groupId, "Новая сессия Говоруна начата.", raw);
       return;
     }
 
@@ -134,7 +134,7 @@ async function handleMessage(raw) {
         request = await transcribeVoice(audio);
         shouldVoiceReply = true;
       } catch (error) {
-        await sendText(groupId, `I couldn't transcribe that voice note: ${shortError(error)}`, raw);
+        await sendText(groupId, `Не удалось расшифровать голосовое сообщение: ${shortError(error)}`, raw);
         return;
       }
     }
@@ -146,7 +146,7 @@ async function handleMessage(raw) {
       const result = await agent.prompt(`${prefix}${request}`);
       await replyWithResult(groupId, raw, result, shouldVoiceReply || /reply\s+(?:in\s+)?voice/i.test(request));
     } catch (error) {
-      await sendText(groupId, `Govorun could not complete that request: ${shortError(error)}`, raw);
+      await sendText(groupId, `Говорун не смог выполнить запрос: ${shortError(error)}`, raw);
     }
   });
 }
