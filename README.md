@@ -25,7 +25,9 @@ web/document access, multimodal image analysis, Browser Harness/captcha/Lappy
 skills, and the self-project can be tested and activated with
 `govorun-self-deploy`, which reloads the service and rolls back startup failures. Voice notes use local
 faster-whisper for input and a local Russian Piper voice (`ru_RU-dmitri-medium`)
-for replies.
+for replies. The voice-note window is armed only by the complete `listen`
+command (optionally followed by `.` or `!`) after a mention is removed; ordinary
+sentences such as “listen to this” do not trigger it.
 
 ## Deployment
 

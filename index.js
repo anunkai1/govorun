@@ -11,6 +11,7 @@ import { chmod, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import QRCode from "qrcode";
 import pino from "pino";
+import { isListenCommand } from "./lib/commands.js";
 import { loadConfig } from "./lib/config.js";
 import { GroupAgent } from "./lib/pi.js";
 import { drainOutgoingFiles } from "./lib/outbox.js";
@@ -81,7 +82,6 @@ function isMentioned(mentions) {
 }
 
 function isNewCommand(text) { return /(^|\s)\/new(?:\s|$)/i.test(text); }
-function isListenCommand(text) { return /(^|\s)listen(?:\s|$)/i.test(text.replace(/@\S+/g, "").trim()); }
 function voiceKey(groupId, sender) { return `${groupId}\u0000${sender}`; }
 
 async function sendText(groupId, text, quoted) {
