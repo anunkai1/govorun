@@ -2,10 +2,16 @@
 
 Govorun is the isolated WhatsApp group transport for a pi coding agent.
 
+> **Status:** this public repository is a frozen bootstrap seed, last updated
+> 29/08/2026. It is **not** the running code. Govorun's live application is
+> self-managed on its host under `/home/govorun/self/current`, which is not
+> published here, so changes committed to this repository do not reach the
+> running agent.
+
 ## Runtime
 
-- Source: `/home/lepton/govorun`
-- Promoted runtime: `/opt/govorun/app`
+- Live application (private, self-managed): `/home/govorun/self/current`
+- Bootstrap seed provisioned from this repository: `/opt/govorun/app`
 - Service: `govorun.service`, user `govorun`
 - Group map: `/home/lepton/infra/govorun/groups.json` → `/etc/govorun/groups.json`
 - WhatsApp linked-device state: `/home/govorun/.local/state/govorun/whatsapp-auth`
@@ -31,10 +37,15 @@ sentences such as “listen to this” do not trigger it.
 
 ## Deployment
 
-Run `/usr/local/bin/deploy-govorun` after reviewing source changes. It runs exact
-npm installation, syntax/tests/audit, transcription dependency checks and an
-atomic root-owned runtime promotion with rollback. Group configuration is changed
-with `/usr/local/bin/govorun-enable-group <jid> <slug>`.
+`/usr/local/bin/deploy-govorun` provisions bootstrap assets from this
+repository: the root-owned seed copy, the launcher and the browser-harness
+skill. It does not install, replace or restart the running application.
+
+The running application is updated in place from `/home/govorun/self/current`
+with `govorun-self-deploy`, which runs the npm syntax/tests/audit gates,
+commits the change and rolls back a release that fails during startup. Group
+configuration is changed with
+`/usr/local/bin/govorun-enable-group <jid> <slug>`.
 
 ## Credentials
 
