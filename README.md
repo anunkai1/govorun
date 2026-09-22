@@ -2,11 +2,11 @@
 
 Govorun is the isolated WhatsApp group transport for a pi coding agent.
 
-> **Status:** this public repository is a frozen bootstrap seed, last updated
-> 29/08/2026. It is **not** the running code. Govorun's live application is
-> self-managed on its host under `/home/govorun/self/current`, which is not
-> published here, so changes committed to this repository do not reach the
-> running agent.
+> **Status:** this public repository is an archived bootstrap seed, last updated
+> 29/08/2026, and is read-only on GitHub. It is **not** the running code.
+> Govorun's live application is self-managed on its host under
+> `/home/govorun/self/current`, which is not published here, so changes
+> committed to this repository would not reach the running agent.
 
 ## Runtime
 
